@@ -7,7 +7,15 @@ import google.generativeai as genai
 
 # ---- Flask App ----
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# ---- Add global CORS headers ----
+@app.after_request
+def apply_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
 # ---- Gemini Config ----
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -77,8 +85,12 @@ def validate_payload(data):
 def health():
     return jsonify({"status": "ok", "time": datetime.utcnow().isoformat() + "Z"})
 
-@app.route("/recommend", methods=["POST"])
+@app.route("/recommend", methods=["POST", "OPTIONS"])
 def recommend():
+    if request.method == "OPTIONS":
+        # Preflight request handled here
+        return jsonify({"status": "ok"}), 200
+
     if not GOOGLE_API_KEY:
         return jsonify({"status": "fail", "error": "Missing GOOGLE_API_KEY env var"}), 500
 
